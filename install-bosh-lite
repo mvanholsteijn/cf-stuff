@@ -60,16 +60,17 @@ echo ==================== upload   stemcell ===============================
 bosh upload stemcell ~/Downloads/$STEMCELL
 
 
-echo ==================== upload cloudfoundry =============================
-cd ~/workspace/cf-release
-bosh upload release releases/cf-$VERSION.yml
-
 echo ==================== Get cf-release ===========================
 rm -rf ~/workspace/cf-release
 cd ~/workspace
 git clone https://github.com/cloudfoundry/cf-release
 ./update
 git checkout v$VERSION
+
+echo ==================== upload cloudfoundry =============================
+cd ~/workspace/cf-release
+bosh upload release releases/cf-$VERSION.yml
+
 
 echo ==================== Make manifest   =================================
 cd ~/workspace/bosh-lite
