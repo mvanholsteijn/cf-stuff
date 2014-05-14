@@ -1,0 +1,94 @@
+#!/bin/bash
+
+export PATH=$PATH:$HOME/bin
+export VERSION=169
+export STEMCELL_BASE=https://s3.amazonaws.com/bosh-jenkins-artifacts/bosh-stemcell/warden
+#export STEMCELL=bosh-stemcell-56-warden-boshlite-ubuntu-lucid-go_agent.tgz
+export STEMCELL=bosh-stemcell-53-warden-boshlite-ubuntu.tgz
+export CF_RELEASE_DIR=~/workspace/cf-release
+
+
+echo ==================== Install bosh_cli ============================
+gem install bosh_cli bosh_cli_plugin_micro
+
+echo ==================== Getting spiff ===============================
+if [ ! -f ~/bin/spiff ] ; then
+	if [ ! -d ~/bin ] ; then
+		mkdir ~/bin
+	fi
+
+	wget -O ~/Downloads/spiff_darwin_amd64.zip https://github.com/cloudfoundry-incubator/spiff/releases/download/v1.0/spiff_darwin_amd64.zip
+	unzip  -n  ~/Downloads/spiff_darwin_amd64.zip spiff -d ~/bin 
+	chmod +x ~/bin/spiff
+fi
+
+echo ==================== cloning bosh-lite ===============================
+mkdir -p ~/workspace
+cd ~/workspace
+if [ ! -d bosh-lite ] ; then
+	git clone https://github.com/cloudfoundry/bosh-lite
+fi
+cd ~/workspace/bosh-lite
+git clean -xdf 
+bundle
+
+echo ==================== vagrant up ======================================
+vagrant up
+
+
+echo ==================== add network route ===============================
+./scripts/add-route
+
+echo ==================== bosh target =====================================
+bosh target 192.168.50.4
+bosh login admin admin
+
+
+echo ==================== restart director  ===============================
+vagrant ssh -c "sudo sv restart director"
+
+echo ==================== download stemcell ===============================
+if [ ! -f ~/Downloads/$STEMCELL ] ; then
+	wget -O ~/Downloads/$STEMCELL $STEMCELL_BASE/$STEMCELL
+fi
+if ! tar -tzf /Users/mark/Downloads/$STEMCELL >/dev/null  2>/dev/null ; then
+	echo stemcell $STEMCELL is corrupt!
+	exit 1
+fi
+
+echo ==================== upload   stemcell ===============================
+bosh upload stemcell ~/Downloads/$STEMCELL
+
+
+echo ==================== Get cf-release ===========================
+rm -rf ~/workspace/cf-release
+if [ ! -d ~/workspace/cf-release ] ; then
+	cd ~/workspace
+	git clone https://github.com/cloudfoundry/cf-release
+fi
+
+./update
+git checkout v$VERSION
+
+echo ==================== upload cloudfoundry =============================
+cd ~/workspace/cf-release
+bosh upload release releases/cf-$VERSION.yml
+
+
+echo ==================== Make manifest   =================================
+cd ~/workspace/bosh-lite
+./scripts/make_manifest_spiff
+
+echo ==================== deploy cloudfoundry =============================
+cd ~/workspace/bosh-lite
+bosh deployment manifests/cf-manifest.yml
+yes yes | bosh deploy
+
+export VCAP_BVT_API_ENDPOINT=http://api.10.244.0.34.xip.io
+export VCAP_BVT_ADMIN_USER=admin
+export VCAP_BVT_ADMIN_USER_PASSWD=admin
+
+cf api $VCAP_BVT_API_ENDPOINT
+cf login $VCAP_BVT_ADMIN_USER $VCAP_BVT_ADMIN_USER_PASSWD
+
+
