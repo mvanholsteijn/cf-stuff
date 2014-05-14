@@ -9,7 +9,11 @@ export CF_RELEASE_DIR=~/workspace/cf-release
 
 
 echo ==================== Install bosh_cli ============================
-gem install bosh_cli bosh_cli_plugin_micro
+if ! (gem list bosh_cli | grep -q '^bosh_cli' ) ; then
+	gem install bosh_cli bosh_cli_plugin_micro
+else
+	echo already installed
+fi
 
 echo ==================== Getting spiff ===============================
 if [ ! -f ~/bin/spiff ] ; then
