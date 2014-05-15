@@ -55,7 +55,7 @@ echo ==================== download stemcell ===============================
 if [ ! -f ~/Downloads/$STEMCELL ] ; then
 	wget -O ~/Downloads/$STEMCELL $STEMCELL_BASE/$STEMCELL
 fi
-if ! tar -tzf /Users/mark/Downloads/$STEMCELL >/dev/null  2>/dev/null ; then
+if ! tar -tzf ~/Downloads/$STEMCELL >/dev/null  2>/dev/null ; then
 	echo stemcell $STEMCELL is corrupt!
 	exit 1
 fi
@@ -68,6 +68,7 @@ echo ==================== Get cf-release ===========================
 rm -rf ~/workspace/cf-release
 cd ~/workspace
 git clone https://github.com/cloudfoundry/cf-release
+cd ~/workspace/cf-release
 ./update
 git checkout v$VERSION
 
